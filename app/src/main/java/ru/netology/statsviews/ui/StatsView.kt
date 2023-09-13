@@ -109,6 +109,7 @@ class StatsView @JvmOverloads constructor(
         when (animationType) {
             AnimationType.PARALLEL -> drawParallel(canvas)
             AnimationType.SEQUENTIAL -> drawSequential(canvas)
+            AnimationType.BIDIRECTIONAL -> drawBidirectional(canvas)
         }
     }
 
@@ -220,11 +221,53 @@ class StatsView @JvmOverloads constructor(
         )
     }
 
+    private fun drawBidirectional(
+        canvas: Canvas,
+    ) {
+        val sum = data.sum()
+        val progressAngle = progress * 360F
+        var startAngle = -45F
+        data.forEachIndexed { index, item ->
+            val angle = item * 360F
+            paint.color = colors.getOrElse(index) { generateRandomColor() }
+            val sweepAngle = angle * progress
+            canvas.drawArc(oval, startAngle - sweepAngle / 2F, sweepAngle, false, paint)
+            startAngle += angle
+        }
+
+
+        canvas.drawText(
+            "%.2f%%".format(data.sum() * progress * 100),
+            center.x,
+            center.y + paintText.textSize / 4,
+            paintText
+        )
+
+        if (data.isEmpty()) {
+            canvas.drawText(
+                "%.2f%%".format(0),
+                center.x,
+                center.y + paintText.textSize / 4,
+                paintText
+            )
+            return
+        }
+
+        canvas.drawText(
+            "%.2f%%".format(sum * progress * 100),
+            center.x,
+            center.y + paintText.textSize / 4,
+            paintText
+        )
+    }
+
     private fun generateRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
 
     private enum class AnimationType(val value: Int) {
         PARALLEL(0),
-        SEQUENTIAL(1);
+        SEQUENTIAL(1),
+        BIDIRECTIONAL(2)
+        ;
 
         companion object {
             fun fromInt(value: Int): AnimationType = values().first { it.value == value }
