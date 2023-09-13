@@ -30,6 +30,8 @@ class StatsView @JvmOverloads constructor(
     private var textSize = AndroidUtil.dp(context, 20).toFloat()
     private var lineWidth = AndroidUtil.dp(context, 5)
     private var colors = emptyList<Int>()
+    private var backgroundColor = 0
+
 
     init {
         context.withStyledAttributes(attributeSet, R.styleable.StatsView) {
@@ -42,6 +44,12 @@ class StatsView @JvmOverloads constructor(
                 getColor(R.styleable.StatsView_color3, generateRandomColor()),
                 getColor(R.styleable.StatsView_color4, generateRandomColor()),
             )
+
+            backgroundColor = getColor(R.styleable.StatsView_backgroundColor, 0)
+        }
+
+        backgroundColor = context.theme.obtainStyledAttributes(intArrayOf(android.R.attr.colorControlNormal)).use {
+            it.getColor(0,0)
         }
     }
 
@@ -88,6 +96,9 @@ class StatsView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
+        paint.color = backgroundColor
+        canvas.drawCircle(center.x, center.y, radius, paint)
+
         if (data.isEmpty()) {
             canvas.drawText(
                 "%.2f%%".format(0),
@@ -101,7 +112,7 @@ class StatsView @JvmOverloads constructor(
         var startAngle = -90F
         var firstColor = 0
         data.forEachIndexed { index, item ->
-            val angle = item / data.sum() * 360F
+            val angle = item * 360F
             paint.color = colors.getOrElse(index) { generateRandomColor() }
 
             if (firstColor == 0) {
@@ -116,7 +127,7 @@ class StatsView @JvmOverloads constructor(
         canvas.drawPoint(center.x, (lineWidth / 2).toFloat(), paint)
 
         canvas.drawText(
-            "%.2f%%".format(100F),
+            "%.2f%%".format(data.sum() * 100),
             center.x,
             center.y + paintText.textSize / 4,
             paintText
