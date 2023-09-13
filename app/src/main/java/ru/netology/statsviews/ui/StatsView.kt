@@ -99,6 +99,7 @@ class StatsView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
+
         if (data.isEmpty()) {
             canvas.drawText(
                 "%.2f%%".format(0),
@@ -109,24 +110,41 @@ class StatsView @JvmOverloads constructor(
             return
         }
 
-        val progressAngle = progress * 360F
-
-        var startAngle = -90F
-        data.forEachIndexed { index, item ->
-            val angle = item * 360F
-            paint.color = colors.getOrElse(index) { generateRandomColor() }
-
-            canvas.drawArc(oval, startAngle + progressAngle, angle * progress, false, paint)
-            startAngle += angle
-        }
-
+        val sum = data.sum()
 
         canvas.drawText(
-            "%.2f%%".format(data.sum() * progress * 100),
+            "%.2f%%".format(sum * progress * 100),
             center.x,
             center.y + paintText.textSize / 4,
             paintText
         )
+
+        var max = sum * 360F
+        var startAngle = -90F
+        val progressAngle = progress * 360F
+
+        if (progressAngle > max) {
+            data.forEachIndexed { index, item ->
+                val angle = item * 360F
+                paint.color = colors.getOrElse(index) { generateRandomColor() }
+                canvas.drawArc(oval, startAngle, angle, false, paint)
+                startAngle += angle
+            }
+            return
+        }
+
+        var filled = 0F
+
+        data.forEachIndexed { index, item ->
+            val angle = item * 360F
+            paint.color = colors.getOrElse(index) { generateRandomColor() }
+
+            canvas.drawArc(oval, startAngle, progressAngle - filled, false, paint)
+            startAngle += angle
+            filled += angle
+
+            if(filled > progressAngle) return
+        }
     }
 
     private fun update() {
