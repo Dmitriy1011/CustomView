@@ -8,5 +8,9 @@
         <attr name="color3" format="color" />
         <attr name="color4" format="color" />
         <attr name="backgroundColor" format="color|reference"/>
+        <attr name="animationType" format="enum">
+            <enum name="parallel" value="0"/>
+            <enum name="sequential" value="1"/>
+        </attr>
     </declare-styleable>
 </resources>

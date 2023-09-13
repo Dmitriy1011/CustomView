@@ -8,6 +8,7 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.Animation
 import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import ru.netology.statsviews.R
@@ -37,10 +38,16 @@ class StatsView @JvmOverloads constructor(
     private var progress = 0F
     private var valueAnimator: ValueAnimator? = null
 
+    private var animationType = AnimationType.PARALLEL
+
     init {
         context.withStyledAttributes(attributeSet, R.styleable.StatsView) {
             textSize = getDimension(R.styleable.StatsView_textSize, textSize)
             lineWidth = getDimension(R.styleable.StatsView_lineWidth, lineWidth.toFloat()).toInt()
+
+            animationType = getInteger(R.styleable.StatsView_animationType, 0).let {
+                AnimationType.fromInt(it)
+            }
 
             colors = listOf(
                 getColor(R.styleable.StatsView_color1, generateRandomColor()),
@@ -99,30 +106,39 @@ class StatsView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
+        when (animationType) {
+            AnimationType.PARALLEL -> drawParallel(canvas)
+            AnimationType.SEQUENTIAL -> drawSequential(canvas)
+        }
+    }
 
-        if (data.isEmpty()) {
-            canvas.drawText(
-                "%.2f%%".format(0),
-                center.x,
-                center.y + paintText.textSize / 4,
-                paintText
-            )
-            return
+    private fun update() {
+        valueAnimator?.let {
+            it.removeAllListeners()
+            it.cancel()
         }
 
+        progress = 0F
+
+        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+            addUpdateListener { animator ->
+                progress = animator.animatedValue as Float
+                invalidate()
+            }
+            duration = 7_000
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
+    }
+
+    private fun drawSequential(
+        canvas: Canvas,
+    ) {
         val sum = data.sum()
-
-        canvas.drawText(
-            "%.2f%%".format(sum * progress * 100),
-            center.x,
-            center.y + paintText.textSize / 4,
-            paintText
-        )
-
         var max = sum * 360F
-        var startAngle = -90F
         val progressAngle = progress * 360F
-
+        var startAngle = -90F
         if (progressAngle > max) {
             data.forEachIndexed { index, item ->
                 val angle = item * 360F
@@ -145,27 +161,73 @@ class StatsView @JvmOverloads constructor(
 
             if(filled > progressAngle) return
         }
+
+        if (data.isEmpty()) {
+            canvas.drawText(
+                "%.2f%%".format(0),
+                center.x,
+                center.y + paintText.textSize / 4,
+                paintText
+            )
+            return
+        }
+
+        canvas.drawText(
+            "%.2f%%".format(sum * progress * 100),
+            center.x,
+            center.y + paintText.textSize / 4,
+            paintText
+        )
     }
 
-    private fun update() {
-        valueAnimator?.let {
-            it.removeAllListeners()
-            it.cancel()
+    private fun drawParallel(
+        canvas: Canvas,
+    ) {
+        val sum = data.sum()
+        val progressAngle = progress * 360F
+        var startAngle = -90F
+        data.forEachIndexed { index, item ->
+            val angle = item * 360F
+            paint.color = colors.getOrElse(index) { generateRandomColor() }
+
+            canvas.drawArc(oval, startAngle + progressAngle, angle * progress, false, paint)
+            startAngle += angle
         }
 
-        progress = 0F
 
-        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
-            addUpdateListener { animator ->
-                progress = animator.animatedValue as Float
-                invalidate()
-            }
-            duration = 5_000
-            interpolator = LinearInterpolator()
-        }.also {
-            it.start()
+        canvas.drawText(
+            "%.2f%%".format(data.sum() * progress * 100),
+            center.x,
+            center.y + paintText.textSize / 4,
+            paintText
+        )
+
+        if (data.isEmpty()) {
+            canvas.drawText(
+                "%.2f%%".format(0),
+                center.x,
+                center.y + paintText.textSize / 4,
+                paintText
+            )
+            return
         }
+
+        canvas.drawText(
+            "%.2f%%".format(sum * progress * 100),
+            center.x,
+            center.y + paintText.textSize / 4,
+            paintText
+        )
     }
 
     private fun generateRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
+
+    private enum class AnimationType(val value: Int) {
+        PARALLEL(0),
+        SEQUENTIAL(1);
+
+        companion object {
+            fun fromInt(value: Int): AnimationType = values().first { it.value == value }
+        }
+    }
 }
