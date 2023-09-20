@@ -5,31 +5,28 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
-    
-    <TextView
-        android:id="@+id/label"
+
+
+    <FrameLayout
+        android:id="@+id/root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <include layout="@layout/start_scene" />
+
+    </FrameLayout>
+
+
+    <Button
+        android:id="@+id/goButton"
+        android:text="Go"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:gravity="top|center_horizontal"
+        android:gravity="bottom|center_horizontal"
         />
 
-    <ru.netology.statsview.ui.StatsView
-        android:id="@+id/statsView"
-        android:layout_width="300dp"
-        android:layout_height="300dp"
-        app:textSize="20sp"
-        app:lineWidth="15sp"
-        app:color1="#391279"
-        app:color2="#399124"
-        app:color3="#182957"
-        app:color4="#582012"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:animationType="bidirectional"
-        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

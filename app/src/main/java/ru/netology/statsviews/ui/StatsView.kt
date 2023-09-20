@@ -8,7 +8,6 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import android.view.animation.Animation
 import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import ru.netology.statsviews.R
@@ -38,7 +37,7 @@ class StatsView @JvmOverloads constructor(
     private var progress = 0F
     private var valueAnimator: ValueAnimator? = null
 
-    private var animationType = AnimationType.PARALLEL
+    private var animationType = AnimationType.BIDIRECTIONAL
 
     init {
         context.withStyledAttributes(attributeSet, R.styleable.StatsView) {
@@ -90,187 +89,185 @@ class StatsView @JvmOverloads constructor(
     }
 
 
-    var data: List<Float> = emptyList()
-        set(value) {
-            field = value
-            update()
-        }
+    var data: List<Float> = listOf(
+        0.25F, 0.25F, 0.25F, 0.25F
+    )
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        radius = min(w, h) / 2F - lineWidth / 2
-        center = PointF(w / 2F, h / 2F)
-        oval = RectF(
-            center.x - radius, center.y - radius,
-            center.x + radius, center.y + radius,
-        )
+override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    radius = min(w, h) / 2F - lineWidth / 2
+    center = PointF(w / 2F, h / 2F)
+    oval = RectF(
+        center.x - radius, center.y - radius,
+        center.x + radius, center.y + radius,
+    )
+}
+
+override fun onDraw(canvas: Canvas) {
+    when (animationType) {
+        AnimationType.PARALLEL -> drawParallel(canvas)
+        AnimationType.SEQUENTIAL -> drawSequential(canvas)
+        AnimationType.BIDIRECTIONAL -> drawBidirectional(canvas)
+    }
+}
+
+private fun update() {
+    valueAnimator?.let {
+        it.removeAllListeners()
+        it.cancel()
     }
 
-    override fun onDraw(canvas: Canvas) {
-        when (animationType) {
-            AnimationType.PARALLEL -> drawParallel(canvas)
-            AnimationType.SEQUENTIAL -> drawSequential(canvas)
-            AnimationType.BIDIRECTIONAL -> drawBidirectional(canvas)
+    progress = 0F
+
+    valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+        addUpdateListener { animator ->
+            progress = animator.animatedValue as Float
+            invalidate()
         }
+        duration = 7_000
+        interpolator = LinearInterpolator()
+    }.also {
+        it.start()
     }
+}
 
-    private fun update() {
-        valueAnimator?.let {
-            it.removeAllListeners()
-            it.cancel()
-        }
-
-        progress = 0F
-
-        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
-            addUpdateListener { animator ->
-                progress = animator.animatedValue as Float
-                invalidate()
-            }
-            duration = 7_000
-            interpolator = LinearInterpolator()
-        }.also {
-            it.start()
-        }
-    }
-
-    private fun drawSequential(
-        canvas: Canvas,
-    ) {
-        val sum = data.sum()
-        var max = sum * 360F
-        val progressAngle = progress * 360F
-        var startAngle = -90F
-        if (progressAngle > max) {
-            data.forEachIndexed { index, item ->
-                val angle = item * 360F
-                paint.color = colors.getOrElse(index) { generateRandomColor() }
-                canvas.drawArc(oval, startAngle, angle, false, paint)
-                startAngle += angle
-            }
-            return
-        }
-
-        var filled = 0F
-
+private fun drawSequential(
+    canvas: Canvas,
+) {
+    val sum = data.sum()
+    var max = sum * 360F
+    val progressAngle = progress * 360F
+    var startAngle = -90F
+    if (progressAngle > max) {
         data.forEachIndexed { index, item ->
             val angle = item * 360F
             paint.color = colors.getOrElse(index) { generateRandomColor() }
-
-            canvas.drawArc(oval, startAngle, progressAngle - filled, false, paint)
-            startAngle += angle
-            filled += angle
-
-            if(filled > progressAngle) return
-        }
-
-        if (data.isEmpty()) {
-            canvas.drawText(
-                "%.2f%%".format(0),
-                center.x,
-                center.y + paintText.textSize / 4,
-                paintText
-            )
-            return
-        }
-
-        canvas.drawText(
-            "%.2f%%".format(sum * progress * 100),
-            center.x,
-            center.y + paintText.textSize / 4,
-            paintText
-        )
-    }
-
-    private fun drawParallel(
-        canvas: Canvas,
-    ) {
-        val sum = data.sum()
-        val progressAngle = progress * 360F
-        var startAngle = -90F
-        data.forEachIndexed { index, item ->
-            val angle = item * 360F
-            paint.color = colors.getOrElse(index) { generateRandomColor() }
-
-            canvas.drawArc(oval, startAngle + progressAngle, angle * progress, false, paint)
+            canvas.drawArc(oval, startAngle, angle, false, paint)
             startAngle += angle
         }
-
-
-        canvas.drawText(
-            "%.2f%%".format(data.sum() * progress * 100),
-            center.x,
-            center.y + paintText.textSize / 4,
-            paintText
-        )
-
-        if (data.isEmpty()) {
-            canvas.drawText(
-                "%.2f%%".format(0),
-                center.x,
-                center.y + paintText.textSize / 4,
-                paintText
-            )
-            return
-        }
-
-        canvas.drawText(
-            "%.2f%%".format(sum * progress * 100),
-            center.x,
-            center.y + paintText.textSize / 4,
-            paintText
-        )
+        return
     }
 
-    private fun drawBidirectional(
-        canvas: Canvas,
-    ) {
-        val sum = data.sum()
-        val progressAngle = progress * 360F
-        var startAngle = -45F
-        data.forEachIndexed { index, item ->
-            val angle = item * 360F
-            paint.color = colors.getOrElse(index) { generateRandomColor() }
-            val sweepAngle = angle * progress
-            canvas.drawArc(oval, startAngle - sweepAngle / 2F, sweepAngle, false, paint)
-            startAngle += angle
-        }
+    var filled = 0F
 
+    data.forEachIndexed { index, item ->
+        val angle = item * 360F
+        paint.color = colors.getOrElse(index) { generateRandomColor() }
 
+        canvas.drawArc(oval, startAngle, progressAngle - filled, false, paint)
+        startAngle += angle
+        filled += angle
+
+        if (filled > progressAngle) return
+    }
+
+    if (data.isEmpty()) {
         canvas.drawText(
-            "%.2f%%".format(data.sum() * progress * 100),
+            "%.2f%%".format(0),
             center.x,
             center.y + paintText.textSize / 4,
             paintText
         )
+        return
+    }
 
-        if (data.isEmpty()) {
-            canvas.drawText(
-                "%.2f%%".format(0),
-                center.x,
-                center.y + paintText.textSize / 4,
-                paintText
-            )
-            return
-        }
+    canvas.drawText(
+        "%.2f%%".format(sum * progress * 100),
+        center.x,
+        center.y + paintText.textSize / 4,
+        paintText
+    )
+}
 
+private fun drawParallel(
+    canvas: Canvas,
+) {
+    val sum = data.sum()
+    val progressAngle = progress * 360F
+    var startAngle = -90F
+    data.forEachIndexed { index, item ->
+        val angle = item * 360F
+        paint.color = colors.getOrElse(index) { generateRandomColor() }
+
+        canvas.drawArc(oval, startAngle + progressAngle, angle * progress, false, paint)
+        startAngle += angle
+    }
+
+
+    canvas.drawText(
+        "%.2f%%".format(data.sum() * progress * 100),
+        center.x,
+        center.y + paintText.textSize / 4,
+        paintText
+    )
+
+    if (data.isEmpty()) {
         canvas.drawText(
-            "%.2f%%".format(sum * progress * 100),
+            "%.2f%%".format(0),
             center.x,
             center.y + paintText.textSize / 4,
             paintText
         )
+        return
     }
 
-    private fun generateRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
+    canvas.drawText(
+        "%.2f%%".format(sum * progress * 100),
+        center.x,
+        center.y + paintText.textSize / 4,
+        paintText
+    )
+}
 
-    private enum class AnimationType(val value: Int) {
-        PARALLEL(0),
-        SEQUENTIAL(1),
-        BIDIRECTIONAL(2)
-        ;
-
-        companion object {
-            fun fromInt(value: Int): AnimationType = values().first { it.value == value }
-        }
+private fun drawBidirectional(
+    canvas: Canvas,
+) {
+    val sum = data.sum()
+    val progressAngle = progress * 360F
+    var startAngle = -45F
+    data.forEachIndexed { index, item ->
+        val angle = item * 360F
+        paint.color = colors.getOrElse(index) { generateRandomColor() }
+        val sweepAngle = angle * progress
+        canvas.drawArc(oval, startAngle - sweepAngle / 2F, sweepAngle, false, paint)
+        startAngle += angle
     }
+
+
+    canvas.drawText(
+        "%.2f%%".format(data.sum() * progress * 100),
+        center.x,
+        center.y + paintText.textSize / 4,
+        paintText
+    )
+
+    if (data.isEmpty()) {
+        canvas.drawText(
+            "%.2f%%".format(0),
+            center.x,
+            center.y + paintText.textSize / 4,
+            paintText
+        )
+        return
+    }
+
+    canvas.drawText(
+        "%.2f%%".format(sum * progress * 100),
+        center.x,
+        center.y + paintText.textSize / 4,
+        paintText
+    )
+}
+
+private fun generateRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
+
+private enum class AnimationType(val value: Int) {
+    PARALLEL(0),
+    SEQUENTIAL(1),
+    BIDIRECTIONAL(2)
+    ;
+
+    companion object {
+        fun fromInt(value: Int): AnimationType = values().first { it.value == value }
+    }
+}
 }
