@@ -78,11 +78,12 @@ class StatsView @JvmOverloads constructor(
     }
 
 
-    var data: List<Float> = emptyList()
-        set(value) {
-            field = value
-            invalidate()
-        }
+    var data: List<Float> = listOf(
+        0.25F,
+        0.25F,
+        0.25F,
+        0.25F
+    )
 
     private var oval = RectF(0F, 0F, 0F, 0F)
 
